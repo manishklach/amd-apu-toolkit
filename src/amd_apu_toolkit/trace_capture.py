@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 import threading
+import ctypes
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -35,6 +36,7 @@ def _iso(dt: datetime | None) -> str | None:
 class TraceCaptureState:
     available: bool
     wpr_path: str | None
+    tracerpt_path: str | None
     state: str = "idle"
     current_profiles: list[str] = field(default_factory=list)
     requested_duration_sec: int | None = None
@@ -46,6 +48,8 @@ class TraceCaptureState:
     last_profiles: list[str] = field(default_factory=list)
     last_stop_reason: str | None = None
     last_error: str | None = None
+    last_summary_path: str | None = None
+    preflight: dict[str, object] = field(default_factory=dict)
     available_profiles: list[str] = field(default_factory=lambda: AVAILABLE_PROFILES.copy())
     analysis_hint: str | None = None
 
@@ -55,15 +59,19 @@ class TraceCaptureManager:
         self.output_dir = (output_dir or Path("output") / "traces").resolve()
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.wpr_path = shutil.which("wpr")
+        self.tracerpt_path = shutil.which("tracerpt")
         self._lock = threading.Lock()
         self._timer: threading.Timer | None = None
         self._state = TraceCaptureState(
             available=self.wpr_path is not None,
             wpr_path=self.wpr_path,
+            tracerpt_path=self.tracerpt_path,
         )
+        self._state.preflight = self._build_preflight()
 
     def status(self) -> dict[str, object]:
         with self._lock:
+            self._state.preflight = self._build_preflight()
             return dict(self._state.__dict__)
 
     def start_capture(self, profiles: list[str] | None = None, duration_sec: int = 15) -> dict[str, object]:
@@ -91,7 +99,7 @@ class TraceCaptureManager:
             try:
                 completed = subprocess.run(command, check=True, capture_output=True, text=True)
             except subprocess.CalledProcessError as exc:
-                error_text = (exc.stderr or exc.stdout or str(exc)).strip()
+                error_text = self._decorate_error((exc.stderr or exc.stdout or str(exc)).strip())
                 self._state.last_error = error_text or "Failed to start WPR capture."
                 self._state.state = "error"
                 return dict(self._state.__dict__)
@@ -148,6 +156,7 @@ class TraceCaptureManager:
                 self._state.last_profiles = profiles
                 self._state.last_stop_reason = reason
                 self._state.last_error = None
+                self._state.last_summary_path = self._generate_summary(output_path)
                 self._state.current_profiles = []
                 self._state.requested_duration_sec = None
                 self._state.started_at = None
@@ -161,12 +170,13 @@ class TraceCaptureManager:
                         "profiles": profiles,
                         "stop_reason": reason,
                         "trace_path": str(output_path),
+                        "summary_path": self._state.last_summary_path,
                         "wpr_stdout": (completed.stdout or "").strip(),
                         "analysis_hint": self._state.analysis_hint,
                     },
                 )
             except subprocess.CalledProcessError as exc:
-                error_text = (exc.stderr or exc.stdout or str(exc)).strip()
+                error_text = self._decorate_error((exc.stderr or exc.stdout or str(exc)).strip())
                 self._state.state = "error"
                 self._state.last_error = error_text or "Failed to stop WPR capture."
             return dict(self._state.__dict__)
@@ -191,3 +201,61 @@ class TraceCaptureManager:
     def _write_metadata(path: Path, payload: dict[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def _generate_summary(self, trace_path: Path) -> str | None:
+        if not self.tracerpt_path or not trace_path.exists():
+            return None
+        summary_path = trace_path.with_name(trace_path.stem + "_summary.txt")
+        report_path = trace_path.with_name(trace_path.stem + "_report.xml")
+        try:
+            subprocess.run(
+                [
+                    self.tracerpt_path,
+                    str(trace_path),
+                    "-summary",
+                    str(summary_path),
+                    "-report",
+                    str(report_path),
+                    "-y",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            return str(summary_path)
+        except subprocess.CalledProcessError:
+            return None
+
+    @staticmethod
+    def _is_admin() -> bool:
+        try:
+            return bool(ctypes.windll.shell32.IsUserAnAdmin())
+        except Exception:
+            return False
+
+    def _build_preflight(self) -> dict[str, object]:
+        is_admin = self._is_admin()
+        ready = self.wpr_path is not None and is_admin
+        reason = "ready"
+        if self.wpr_path is None:
+            reason = "wpr.exe not found"
+        elif not is_admin:
+            reason = "WPR capture likely requires an elevated shell on this machine"
+        return {
+            "ready": ready,
+            "is_admin": is_admin,
+            "wpr_available": self.wpr_path is not None,
+            "tracerpt_available": self.tracerpt_path is not None,
+            "reason": reason,
+        }
+
+    @staticmethod
+    def _decorate_error(error_text: str) -> str:
+        if "0xc5585011" in error_text:
+            return (
+                f"{error_text}\nHint: WPR start was blocked. Run the dashboard or CLI from an elevated shell "
+                "or loosen local performance tracing policy."
+            )
+        if "access is denied" in error_text.lower():
+            return f"{error_text}\nHint: tracing requires elevated privileges on this machine."
+        return error_text

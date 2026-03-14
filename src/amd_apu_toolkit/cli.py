@@ -85,6 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="WPR profiles to include, e.g. CPU GPU Video.",
     )
 
+    subparsers.add_parser("trace-preflight", help="Check whether ETW trace capture is ready on this machine.")
+
     return parser
 
 
@@ -129,6 +131,9 @@ def main() -> None:
         manager = TraceCaptureManager()
         result = manager.capture_for_duration(profiles=args.profiles, duration_sec=args.duration)
         _print_mapping("Trace Capture", result)
+    elif args.command == "trace-preflight":
+        manager = TraceCaptureManager()
+        _print_mapping("Trace Preflight", manager.status())
 
 
 if __name__ == "__main__":

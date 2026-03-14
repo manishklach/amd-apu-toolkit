@@ -460,14 +460,20 @@ function renderTraceState(trace) {
   const profiles = Array.isArray(trace?.current_profiles) && trace.current_profiles.length
     ? trace.current_profiles.join(", ")
     : (Array.isArray(trace?.last_profiles) && trace.last_profiles.length ? trace.last_profiles.join(", ") : "n/a");
+  const preflight = trace?.preflight || {};
+  const preflightText = preflight.ready
+    ? "ready"
+    : `${preflight.reason || "not ready"}${preflight.is_admin === false ? " | not elevated" : ""}`;
   document.getElementById("traceState").textContent = state;
   document.getElementById("traceProfiles").textContent = profiles;
   document.getElementById("traceOutput").textContent = textOr(trace?.output_path);
   document.getElementById("traceLastPath").textContent = textOr(trace?.last_trace_path);
+  document.getElementById("traceSummaryPath").textContent = textOr(trace?.last_summary_path);
+  document.getElementById("tracePreflight").textContent = preflightText;
   document.getElementById("traceHint").textContent = trace?.last_error
     ? trace.last_error
     : textOr(trace?.analysis_hint, "Capture CPU/GPU/Video ETW traces for WPA analysis.");
-  document.getElementById("traceStartBtn").disabled = !trace?.available || state === "running";
+  document.getElementById("traceStartBtn").disabled = !trace?.available || state === "running" || preflight.ready === false;
   document.getElementById("traceStopBtn").disabled = state !== "running";
 }
 
