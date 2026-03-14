@@ -11,21 +11,17 @@ This project targets the practical gap between Task Manager and heavyweight vend
 
 ## Screenshots
 
-### GPU Focus
-
-![GPU Focus](docs/screenshots/gpu-focus-full.png)
-
-### CPU Focus
-
-![CPU Focus](docs/screenshots/cpu-focus-full.png)
-
-### RAM
-
-![RAM](docs/screenshots/ram-full.png)
-
 ### Overview
 
-![Overview](docs/screenshots/overview-full.png)
+![Overview](docs/screenshots/browser-overview.png)
+
+### GPU telemetry panel
+
+![GPU telemetry panel](docs/screenshots/gpu-side-panel.png)
+
+### CPU process panel
+
+![CPU process panel](docs/screenshots/cpu-process-panel.png)
 
 ## What V1 includes
 
