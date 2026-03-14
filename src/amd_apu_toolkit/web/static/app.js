@@ -28,6 +28,7 @@ const history = {
   risk: [],
   battery: [],
   remainingMin: [],
+  cpuClockMhz: [],
 };
 
 const MAX_POINTS = 40;
@@ -260,6 +261,7 @@ const powerChart = new Chart(document.getElementById("powerChart"), {
       { label: "Battery %", data: [], borderColor: "#3fb950", borderWidth: 2.4, tension: 0.25, yAxisID: "yBattery" },
       { label: "Remaining min", data: [], borderColor: "#58a6ff", borderWidth: 2.0, borderDash: [6, 4], tension: 0.25, yAxisID: "yRemain" },
       { label: "Risk", data: [], borderColor: "#ff7b72", borderWidth: 2.0, tension: 0.25, yAxisID: "yBattery" },
+      { label: "CPU MHz", data: [], borderColor: "#d29922", borderWidth: 2.0, borderDash: [3, 3], tension: 0.25, yAxisID: "yRemain" },
     ],
   },
   options: {
@@ -332,6 +334,7 @@ function refreshCharts() {
   powerChart.data.datasets[0].data = [...history.battery];
   powerChart.data.datasets[1].data = [...history.remainingMin];
   powerChart.data.datasets[2].data = [...history.risk];
+  powerChart.data.datasets[3].data = [...history.cpuClockMhz];
   powerChart.update("none");
 }
 
@@ -406,6 +409,7 @@ function updateSnapshot(snapshot) {
   const opencl = snapshot.opencl;
   const powerState = snapshot.system.power;
   const risk = snapshot.system.risk;
+  const sensors = snapshot.system.sensors;
   const topEngine = gpu.top_engine || { name: "idle", util_percent: 0 };
   const decodeUtil = sumEngineValues(gpu.engines, (name) => name.includes("decode"));
   const encodeUtil = sumEngineValues(gpu.engines, (name) => name.includes("encode") || name.includes("codec"));
@@ -432,10 +436,20 @@ function updateSnapshot(snapshot) {
   document.getElementById("freeRam").textContent = fmt(power.free_memory_gb, " GB");
   document.getElementById("overviewRisk").textContent = `${risk.score} (${risk.level})`;
   document.getElementById("overviewBattery").textContent = formatBattery(powerState);
+  document.getElementById("sensorCpuClock").textContent = fmt(sensors.cpu_actual_mhz, " MHz");
+  document.getElementById("sensorGpuClock").textContent = fmt(sensors.gpu_core_mhz, " MHz");
   document.getElementById("overviewPowerPlan").textContent = textOr(powerState.power_plan);
   document.getElementById("overviewRemaining").textContent = formatRemainingMinutes(powerState.battery_remaining_min);
   document.getElementById("overviewCommit").textContent = `${fmt(cpu.latency.committed_gb, " GB")} / ${fmt(cpu.latency.commit_limit_gb, " GB")}`;
   document.getElementById("overviewDiskQueue").textContent = fmt(cpu.latency.disk_queue_depth);
+  document.getElementById("sensorProvider").textContent = textOr(sensors.provider);
+  document.getElementById("sensorCpuPerf").textContent = `${fmt(sensors.cpu_perf_percent, "%")} @ ${fmt(sensors.cpu_max_percent, "% max")}`;
+  document.getElementById("sensorCpuLimit").textContent = `${fmt(sensors.cpu_perf_limit_percent, "%")} ${textOr(sensors.cpu_limit_reason)}`;
+  document.getElementById("sensorGpuCore").textContent = fmt(sensors.gpu_core_mhz, " MHz");
+  document.getElementById("sensorGpuMem").textContent = fmt(sensors.gpu_mem_mhz, " MHz");
+  document.getElementById("sensorGpuTemp").textContent = fmt(sensors.gpu_temp_c, " C");
+  document.getElementById("sensorGpuPower").textContent = fmt(sensors.gpu_power_w, " W");
+  document.getElementById("sensorThrottle").textContent = textOr(sensors.throttle_hint);
 
   document.getElementById("cpuFocusUtil").textContent = fmt(power.cpu_util_percent, "%");
   document.getElementById("cpuRunnable").textContent = fmt(cpu.latency.runnable_threads_per_core);
@@ -488,6 +502,7 @@ function updateSnapshot(snapshot) {
   pushPoint(history.risk, Number(risk.score ?? 0));
   pushPoint(history.battery, Number(powerState.battery_percent ?? 0));
   pushPoint(history.remainingMin, Number(powerState.battery_remaining_min ?? 0));
+  pushPoint(history.cpuClockMhz, Number(sensors.cpu_actual_mhz ?? 0));
 
   refreshCharts();
   renderGpuTable("gpuFocusProcesses", gpu.processes);

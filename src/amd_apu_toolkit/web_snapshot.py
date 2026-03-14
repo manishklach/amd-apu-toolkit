@@ -7,6 +7,7 @@ from .cpu_tracer import compute_risk_score, sample_cpu_latency_metrics, sample_c
 from .gpu_tracer import sample_gpu_engine_running_times, sample_gpu_engines, trace_gpu_processes
 from .opencl_probe import probe_opencl
 from .power import build_counter_paths, collect_power_sample
+from .sensors import sample_sensor_snapshot
 from .uma import inspect_uma
 
 
@@ -34,6 +35,7 @@ class SnapshotCollector:
         cpu_processes = sample_cpu_processes(limit=15)
         cpu_latency = sample_cpu_latency_metrics()
         power_state = sample_power_battery_metrics()
+        sensors = sample_sensor_snapshot()
         top_engine = next(iter(engine_sample.engines.items()), ("idle", 0.0))
         risk = compute_risk_score(cpu_latency, power_sample, uma_snapshot.pressure_score, float(top_engine[1]))
 
@@ -48,6 +50,7 @@ class SnapshotCollector:
             "system": {
                 "power": power_state,
                 "risk": risk,
+                "sensors": sensors,
             },
             "gpu": {
                 "top_engine": {"name": top_engine[0], "util_percent": top_engine[1]},

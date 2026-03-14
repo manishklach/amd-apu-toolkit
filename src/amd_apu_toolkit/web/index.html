@@ -121,11 +121,13 @@
     </section>
 
     <section id="overview" class="view">
-      <div class="cards four">
+      <div class="cards six">
         <article class="card"><h2>Risk Score</h2><p id="overviewRisk">n/a</p></article>
         <article class="card"><h2>Battery</h2><p id="overviewBattery">n/a</p></article>
         <article class="card"><h2>CPU Util</h2><p id="cpuUtil">n/a</p></article>
         <article class="card"><h2>Free RAM</h2><p id="freeRam">n/a</p></article>
+        <article class="card"><h2>CPU Clock</h2><p id="sensorCpuClock">n/a</p></article>
+        <article class="card"><h2>GPU Clock</h2><p id="sensorGpuClock">n/a</p></article>
       </div>
       <div class="grid-two">
         <article class="panel">
@@ -146,6 +148,17 @@
             <span>Remaining</span><span id="overviewRemaining">n/a</span>
             <span>Commit</span><span id="overviewCommit">n/a</span>
             <span>Disk Queue</span><span id="overviewDiskQueue">n/a</span>
+          </div>
+          <h2>Sensor Snapshot</h2>
+          <div class="kv">
+            <span>Provider</span><span id="sensorProvider">n/a</span>
+            <span>CPU Perf</span><span id="sensorCpuPerf">n/a</span>
+            <span>CPU Limit</span><span id="sensorCpuLimit">n/a</span>
+            <span>GPU Core</span><span id="sensorGpuCore">n/a</span>
+            <span>GPU Memory</span><span id="sensorGpuMem">n/a</span>
+            <span>GPU Temp</span><span id="sensorGpuTemp">n/a</span>
+            <span>GPU Power</span><span id="sensorGpuPower">n/a</span>
+            <span>Throttle Hint</span><span id="sensorThrottle">n/a</span>
           </div>
           <h2>Risk Drivers</h2>
           <p id="riskReasons" class="alert">No active risk drivers.</p>
