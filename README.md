@@ -126,6 +126,39 @@ The browser dashboard is the main V1 experience. It includes:
 
 The browser UI uses Chart.js and a local FastAPI + WebSocket backend. No cloud service is involved.
 
+## Optional sensor setup
+
+The dashboard now supports an optional sensor bridge for clocks, temperature, and power.
+
+What works without extra tools:
+
+- CPU effective frequency style metrics
+- CPU performance limit counters
+- power plan and battery state
+
+What needs an optional local provider:
+
+- GPU core clock
+- GPU memory clock
+- GPU temperature
+- GPU power
+
+Supported providers:
+
+- `LibreHardwareMonitor`
+- `OpenHardwareMonitor`
+
+How to enable it:
+
+1. install and run `LibreHardwareMonitor` or `OpenHardwareMonitor`
+2. enable the WMI interface in that tool
+3. keep the tool running locally
+4. restart `amd-apu-toolkit serve-web`
+
+When the provider is active, the `Overview` page will switch the `Sensor Snapshot` provider from `windows-only` to the detected provider name and start filling GPU sensor fields.
+
+If no provider is installed, the dashboard still works. GPU sensor fields will remain `n/a`.
+
 ## Demo scenarios
 
 The toolkit is easiest to understand when run against repeatable scenarios instead of idle desktop usage. Good canned demos:
