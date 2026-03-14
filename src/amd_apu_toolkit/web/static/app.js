@@ -11,7 +11,9 @@ const history = {
   engine3d: [],
   engineCompute: [],
   engineCopy: [],
-  engineVideo: [],
+  engineVideoDecode: [],
+  engineVideoEncode: [],
+  engineVideoProc: [],
   cpuQueue: [],
   cpuRunnable: [],
   cpuContextK: [],
@@ -24,6 +26,8 @@ const history = {
   pagefile: [],
   commitPct: [],
   risk: [],
+  battery: [],
+  remainingMin: [],
 };
 
 const MAX_POINTS = 40;
@@ -102,7 +106,9 @@ const gpuFocusChart = buildSingleAxisChart(
     { label: "3D", data: [], borderColor: "#ff7b72", borderWidth: 2.3, tension: 0.25 },
     { label: "Compute", data: [], borderColor: "#58a6ff", borderWidth: 2.3, tension: 0.25 },
     { label: "Copy", data: [], borderColor: "#d29922", borderWidth: 2.3, tension: 0.25 },
-    { label: "Video", data: [], borderColor: "#3fb950", borderWidth: 2.3, tension: 0.25 },
+    { label: "Decode", data: [], borderColor: "#3fb950", borderWidth: 2.3, tension: 0.25 },
+    { label: "Encode", data: [], borderColor: "#c678dd", borderWidth: 2.3, tension: 0.25 },
+    { label: "Video Proc", data: [], borderColor: "#56b6c2", borderWidth: 2.3, tension: 0.25 },
   ],
   "Percent",
   100,
@@ -246,12 +252,53 @@ const ramChart = new Chart(document.getElementById("ramChart"), {
   },
 });
 
+const powerChart = new Chart(document.getElementById("powerChart"), {
+  type: "line",
+  data: {
+    labels: [],
+    datasets: [
+      { label: "Battery %", data: [], borderColor: "#3fb950", borderWidth: 2.4, tension: 0.25, yAxisID: "yBattery" },
+      { label: "Remaining min", data: [], borderColor: "#58a6ff", borderWidth: 2.0, borderDash: [6, 4], tension: 0.25, yAxisID: "yRemain" },
+      { label: "Risk", data: [], borderColor: "#ff7b72", borderWidth: 2.0, tension: 0.25, yAxisID: "yBattery" },
+    ],
+  },
+  options: {
+    ...chartDefaults(),
+    scales: {
+      x: {
+        ticks: { color: "#93a8ba", maxTicksLimit: 6 },
+        grid: { color: "#263547" },
+      },
+      yBattery: {
+        type: "linear",
+        position: "left",
+        beginAtZero: true,
+        max: 100,
+        ticks: { color: "#93a8ba" },
+        title: { display: true, text: "Battery / Risk", color: "#ebf2f8" },
+        grid: { color: "#263547" },
+      },
+      yRemain: {
+        type: "linear",
+        position: "right",
+        beginAtZero: true,
+        grace: "10%",
+        ticks: { color: "#93a8ba" },
+        title: { display: true, text: "Minutes", color: "#ebf2f8" },
+        grid: { drawOnChartArea: false, color: "#263547" },
+      },
+    },
+  },
+});
+
 function refreshCharts() {
   gpuFocusChart.data.labels = [...history.labels];
   gpuFocusChart.data.datasets[0].data = [...history.engine3d];
   gpuFocusChart.data.datasets[1].data = [...history.engineCompute];
   gpuFocusChart.data.datasets[2].data = [...history.engineCopy];
-  gpuFocusChart.data.datasets[3].data = [...history.engineVideo];
+  gpuFocusChart.data.datasets[3].data = [...history.engineVideoDecode];
+  gpuFocusChart.data.datasets[4].data = [...history.engineVideoEncode];
+  gpuFocusChart.data.datasets[5].data = [...history.engineVideoProc];
   gpuFocusChart.update("none");
 
   gpuCpuChart.data.labels = [...history.labels];
@@ -280,6 +327,12 @@ function refreshCharts() {
   ramChart.data.datasets[2].data = [...history.dedicated];
   ramChart.data.datasets[3].data = [...history.commitPct];
   ramChart.update("none");
+
+  powerChart.data.labels = [...history.labels];
+  powerChart.data.datasets[0].data = [...history.battery];
+  powerChart.data.datasets[1].data = [...history.remainingMin];
+  powerChart.data.datasets[2].data = [...history.risk];
+  powerChart.update("none");
 }
 
 function renderGpuTable(targetId, processes) {
@@ -356,14 +409,17 @@ function updateSnapshot(snapshot) {
   const topEngine = gpu.top_engine || { name: "idle", util_percent: 0 };
   const decodeUtil = sumEngineValues(gpu.engines, (name) => name.includes("decode"));
   const encodeUtil = sumEngineValues(gpu.engines, (name) => name.includes("encode") || name.includes("codec"));
-  const videoUtil = sumEngineValues(gpu.engines, (name) => name.includes("video"));
+  const videoProcUtil = sumEngineValues(gpu.engines, (name) => name.includes("video") && !name.includes("decode") && !name.includes("encode") && !name.includes("codec"));
   const topMemoryProc = [...gpu.processes].sort((a, b) => (Number(b.dedicated_mb || 0) + Number(b.shared_mb || 0)) - (Number(a.dedicated_mb || 0) + Number(a.shared_mb || 0)))[0];
 
   document.getElementById("status").textContent = `Last sample: ${snapshot.timestamp}`;
   document.getElementById("gpuUtil").textContent = fmt(power.gpu_util_percent, "%");
   document.getElementById("topEngine").textContent = `${topEngine.name} ${fmt(topEngine.util_percent, "%")}`;
   document.getElementById("gpuDecode").textContent = fmt(decodeUtil, "%");
+  document.getElementById("gpuEncodeCard").textContent = fmt(encodeUtil, "%");
+  document.getElementById("gpuVideoProc").textContent = fmt(videoProcUtil, "%");
   document.getElementById("gpuEncode").textContent = fmt(encodeUtil, "%");
+  document.getElementById("gpuVideoProcDetail").textContent = fmt(videoProcUtil, "%");
   document.getElementById("gpuTopMemory").textContent = topMemoryProc ? `${topMemoryProc.name} ${fmt(Number(topMemoryProc.dedicated_mb || 0) + Number(topMemoryProc.shared_mb || 0), " MB")}` : "n/a";
   document.getElementById("gpuProcCount").textContent = String(gpu.processes.length);
   document.getElementById("gpuSharedDetail").textContent = fmt(power.gpu_shared_mb, " MB");
@@ -393,6 +449,7 @@ function updateSnapshot(snapshot) {
   document.getElementById("powerPlan").textContent = textOr(powerState.power_plan);
   document.getElementById("powerRemaining").textContent = formatRemainingMinutes(powerState.battery_remaining_min);
   document.getElementById("riskScore").textContent = `${risk.score} (${risk.level})`;
+  document.getElementById("riskReasons").textContent = risk.reasons?.length ? risk.reasons.join(" | ") : "No active risk drivers.";
 
   document.getElementById("ramCommitGb").textContent = fmt(cpu.latency.committed_gb, " GB");
   document.getElementById("ramCommitPct").textContent = fmt(cpu.latency.commit_in_use_percent, "%");
@@ -414,7 +471,9 @@ function updateSnapshot(snapshot) {
   pushPoint(history.engine3d, Number(gpu.engines["3d"] ?? 0));
   pushPoint(history.engineCompute, sumEngineValues(gpu.engines, (k) => k.includes("compute")));
   pushPoint(history.engineCopy, sumEngineValues(gpu.engines, (k) => k.includes("copy")));
-  pushPoint(history.engineVideo, videoUtil);
+  pushPoint(history.engineVideoDecode, decodeUtil);
+  pushPoint(history.engineVideoEncode, encodeUtil);
+  pushPoint(history.engineVideoProc, videoProcUtil);
   pushPoint(history.cpuQueue, Number(cpu.latency.processor_queue_length ?? 0));
   pushPoint(history.cpuRunnable, Number(cpu.latency.runnable_threads_per_core ?? 0));
   pushPoint(history.cpuContextK, Number(cpu.latency.context_switches_per_sec ?? 0) / 1000);
@@ -427,6 +486,8 @@ function updateSnapshot(snapshot) {
   pushPoint(history.pagefile, Number(cpu.latency.pagefile_usage_percent ?? 0));
   pushPoint(history.commitPct, Number(cpu.latency.commit_in_use_percent ?? 0));
   pushPoint(history.risk, Number(risk.score ?? 0));
+  pushPoint(history.battery, Number(powerState.battery_percent ?? 0));
+  pushPoint(history.remainingMin, Number(powerState.battery_remaining_min ?? 0));
 
   refreshCharts();
   renderGpuTable("gpuFocusProcesses", gpu.processes);

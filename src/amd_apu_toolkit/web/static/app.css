@@ -98,6 +98,10 @@ main {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.cards.six {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
 .card,
 .panel {
   background: linear-gradient(180deg, rgba(18,29,42,0.96), rgba(13,23,35,0.96));
@@ -163,6 +167,11 @@ canvas {
   height: calc(100% - 28px) !important;
 }
 
+.power-chart-wrap {
+  height: 220px;
+  margin-top: 0.75rem;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -218,6 +227,7 @@ td {
   }
 
   .cards.four,
+  .cards.six,
   .grid-two {
     grid-template-columns: 1fr;
   }

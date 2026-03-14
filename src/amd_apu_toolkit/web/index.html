@@ -23,10 +23,12 @@
 
   <main>
     <section id="gpu-focus" class="view is-active">
-      <div class="cards four">
+      <div class="cards six">
         <article class="card"><h2>GPU Util</h2><p id="gpuUtil">n/a</p></article>
         <article class="card"><h2>Top Engine</h2><p id="topEngine">n/a</p></article>
         <article class="card"><h2>Video Decode</h2><p id="gpuDecode">n/a</p></article>
+        <article class="card"><h2>Video Encode</h2><p id="gpuEncodeCard">n/a</p></article>
+        <article class="card"><h2>Video Proc</h2><p id="gpuVideoProc">n/a</p></article>
         <article class="card"><h2>Top GPU Memory</h2><p id="gpuTopMemory">n/a</p></article>
       </div>
       <div class="grid-two">
@@ -45,6 +47,7 @@
             <span>Runtime Delta</span><span id="runtimeDelta">n/a</span>
             <span>GPU Processes</span><span id="gpuProcCount">n/a</span>
             <span>Video Encode</span><span id="gpuEncode">n/a</span>
+            <span>Video Proc</span><span id="gpuVideoProcDetail">n/a</span>
           </div>
           <h2>Top GPU Processes</h2>
           <table>
@@ -143,6 +146,12 @@
             <span>Remaining</span><span id="overviewRemaining">n/a</span>
             <span>Commit</span><span id="overviewCommit">n/a</span>
             <span>Disk Queue</span><span id="overviewDiskQueue">n/a</span>
+          </div>
+          <h2>Risk Drivers</h2>
+          <p id="riskReasons" class="alert">No active risk drivers.</p>
+          <h2>Power History</h2>
+          <div class="power-chart-wrap">
+            <canvas id="powerChart"></canvas>
           </div>
           <h2>OpenCL Runtime</h2>
           <div class="kv">
