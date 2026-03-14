@@ -171,4 +171,4 @@ It does not require ROCm.
 
 ## License
 
-No license file is included yet. Add one before accepting external contributions or redistribution.
+MIT. See [LICENSE](LICENSE).
